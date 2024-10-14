@@ -26,4 +26,3 @@ An open source framework for generative image inpainting task, with the support 
 ```
 =======
 # Final_Project
->>>>>>> 4118d918ad9b46d4d73d2140aa5622075a4e1ef3
