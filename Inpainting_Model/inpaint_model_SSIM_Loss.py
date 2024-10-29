@@ -430,9 +430,23 @@ class InpaintCAModel(Model):
         """
         """
         if FLAGS.guided:
-            batch_data, edge = batch_data
-            edge = edge[:, :, :, 0:1] / 255.
-            edge = tf.cast(edge > FLAGS.edge_threshold, tf.float32)
+        batch_data, edge = batch_data
+        edge = edge[:, :, :, 0:1] / 255.
+        edge = tf.cast(edge > FLAGS.edge_threshold, tf.float32)
+
+    specific_mask_percentage = 0.4
+    use_specific_mask = tf.less(tf.random.uniform([]), specific_mask_percentage)
+
+    def load_specific_mask():
+        mask = tf.image.decode_png(tf.io.read_file(FLAGS.mask_path), channels=1)
+        mask = tf.image.resize(mask, size=[FLAGS.img_shapes[0], FLAGS.img_shapes[1]])
+        mask = tf.cast(mask > 127.5, tf.float32)
+        mask = tf.expand_dims(mask, axis=0)
+        return mask
+
+    def generate_random_mask():
+        if bbox is None:
+            bbox = random_bbox(FLAGS)
         regular_mask = bbox2mask(FLAGS, bbox, name='mask_c')
         irregular_mask = brush_stroke_mask(FLAGS, name='mask_c')
         mask = tf.cast(
@@ -442,7 +456,10 @@ class InpaintCAModel(Model):
             ),
             tf.float32
         )
+        return mask
 
+    mask = tf.cond(use_specific_mask, load_specific_mask, generate_random_mask)
+    
         batch_pos = batch_data / 127.5 - 1.
         batch_incomplete = batch_pos*(1.-mask)
         if FLAGS.guided:
